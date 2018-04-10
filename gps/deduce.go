@@ -16,7 +16,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/armon/go-radix"
+	radix "github.com/armon/go-radix"
 	"github.com/pkg/errors"
 )
 
@@ -74,6 +74,7 @@ var (
 	jazzRegex         = regexp.MustCompile(`^(?P<root>hub\.jazz\.net(/git/[a-z0-9]+/[A-Za-z0-9_.\-]+))((?:/[A-Za-z0-9_.\-]+)*)$`)
 	apacheRegex       = regexp.MustCompile(`^(?P<root>git\.apache\.org(/[a-z0-9_.\-]+\.git))((?:/[A-Za-z0-9_.\-]+)*)$`)
 	vcsExtensionRegex = regexp.MustCompile(`^(?P<root>([a-z0-9.\-]+\.)+[a-z0-9.\-]+(:[0-9]+)?/[A-Za-z0-9_.\-/~]*?\.(?P<vcs>bzr|git|hg|svn))((?:/[A-Za-z0-9_.\-]+)*)$`)
+	uberRegex         = regexp.MustCompile(`^(?P<root>code\.uber\.internal(\/[A-Za-z0-9][-A-Za-z0-9]*(\.git){0,1}\/*[A-Za-z0-9_.\-]+))((?:\/[A-Za-z0-9_.\-]+)*)$`)
 )
 
 // Other helper regexes
@@ -92,6 +93,7 @@ func pathDeducerTrie() *deducerTrie {
 	dxt.Insert("git.launchpad.net/", launchpadGitDeducer{regexp: glpRegex})
 	dxt.Insert("hub.jazz.net/", jazzDeducer{regexp: jazzRegex})
 	dxt.Insert("git.apache.org/", apacheDeducer{regexp: apacheRegex})
+	dxt.Insert("code.uber.internal/", uberDeducer{regexp: uberRegex})
 
 	return dxt
 }
@@ -448,6 +450,47 @@ func (m apacheDeducer) deduceSource(path string, u *url.URL) (maybeSources, erro
 	}
 
 	u.Host = "git.apache.org"
+	u.Path = v[2]
+
+	if u.Scheme != "" {
+		if !validateVCSScheme(u.Scheme, "git") {
+			return nil, fmt.Errorf("%s is not a valid scheme for accessing a git repository", u.Scheme)
+		}
+		return maybeSources{maybeGitSource{url: u}}, nil
+	}
+
+	mb := make(maybeSources, len(gitSchemes))
+	for k, scheme := range gitSchemes {
+		u2 := *u
+		u2.Scheme = scheme
+		mb[k] = maybeGitSource{url: &u2}
+	}
+
+	return mb, nil
+}
+
+type uberDeducer struct {
+	regexp *regexp.Regexp
+}
+
+func (m uberDeducer) deduceRoot(path string) (string, error) {
+	fmt.Println("Deducing uber root", path)
+	v := m.regexp.FindStringSubmatch(path)
+	if v == nil {
+		return "", fmt.Errorf("%s is not a valid path for a source on code.uber.internal", path)
+	}
+
+	return "code.uber.internal" + v[2], nil
+}
+
+func (m uberDeducer) deduceSource(path string, u *url.URL) (maybeSources, error) {
+	fmt.Println("Deducing uber source", path, u)
+	v := m.regexp.FindStringSubmatch(path)
+	if v == nil {
+		return nil, fmt.Errorf("%s is not a valid path for a source on code.uber.internal", path)
+	}
+
+	u.Host = "code.uber.internal"
 	u.Path = v[2]
 
 	if u.Scheme != "" {

@@ -501,6 +501,48 @@ var pathDeductionFixtures = map[string][]pathDeductionFixture{
 			},
 		},
 	},
+	"uber": {
+		{
+			in:   "code.uber.internal/everything/palantir",
+			root: "code.uber.internal/everything/palantir",
+			mb: maybeSources{
+				maybeGitSource{url: mkurl("https://code.uber.internal/everything/palantir")},
+				maybeGitSource{url: mkurl("ssh://code.uber.internal/everything/palantir")},
+				maybeGitSource{url: mkurl("git://code.uber.internal/everything/palantir")},
+				maybeGitSource{url: mkurl("http://code.uber.internal/everything/palantir")},
+			},
+		},
+		{
+			in:   "code.uber.internal/go-common.git/client/fireball",
+			root: "code.uber.internal/go-common.git/client",
+			mb: maybeSources{
+				maybeGitSource{url: mkurl("https://code.uber.internal/go-common.git/client")},
+				maybeGitSource{url: mkurl("ssh://code.uber.internal/go-common.git/client")},
+				maybeGitSource{url: mkurl("git://code.uber.internal/go-common.git/client")},
+				maybeGitSource{url: mkurl("http://code.uber.internal/go-common.git/client")},
+			},
+		},
+		{
+			in:   "code.uber.internal/go-common.git",
+			root: "code.uber.internal/go-common.git",
+			mb: maybeSources{
+				maybeGitSource{url: mkurl("https://code.uber.internal/go-common.git")},
+				maybeGitSource{url: mkurl("ssh://code.uber.internal/go-common.git")},
+				maybeGitSource{url: mkurl("git://code.uber.internal/go-common.git")},
+				maybeGitSource{url: mkurl("http://code.uber.internal/go-common.git")},
+			},
+		},
+		{
+			in:   "code.uber.internal/communications/go-rosetta/rosetta",
+			root: "code.uber.internal/communications/go-rosetta",
+			mb: maybeSources{
+				maybeGitSource{url: mkurl("https://code.uber.internal/communications/go-rosetta")},
+				maybeGitSource{url: mkurl("ssh://code.uber.internal/communications/go-rosetta")},
+				maybeGitSource{url: mkurl("git://code.uber.internal/communications/go-rosetta")},
+				maybeGitSource{url: mkurl("http://code.uber.internal/communications/go-rosetta")},
+			},
+		},
+	},
 }
 
 func TestDeduceFromPath(t *testing.T) {
@@ -526,6 +568,8 @@ func TestDeduceFromPath(t *testing.T) {
 				deducer = apacheDeducer{regexp: apacheRegex}
 			case "vcsext":
 				deducer = vcsExtensionDeducer{regexp: vcsExtensionRegex}
+			case "uber":
+				deducer = uberDeducer{regexp: uberRegex}
 			default:
 				// Should just be the vanity imports, which we do elsewhere
 				t.Log("skipping")
